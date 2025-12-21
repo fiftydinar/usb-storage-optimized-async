@@ -67,7 +67,6 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
 - Systemd
 - `lsusb`
 - `gawk`
-- `wc`
 - `bc`
 - `find`
 - `grep`

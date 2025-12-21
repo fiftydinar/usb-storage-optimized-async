@@ -22,7 +22,7 @@ model_id="${3}"
 current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${vendor_id}" -v model_id="${model_id}" '$0 ~ vendor_id ":" model_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | grep -o '[0-9]*\.[0-9]*\|[0-9]*')
 
 # Handle the case if float is with , as a decimal separator
-if [[ $(echo "${current_usb_speed}" | wc -l) -gt 1 ]]; then
+if [[ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]]; then
   echo "Cannot determine current USB speed for the device to write custom max_bytes dirty value"
   echo "Exiting"
   exit 1
