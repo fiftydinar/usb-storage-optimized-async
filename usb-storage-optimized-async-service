@@ -20,7 +20,7 @@ _basename() {
 
 # POSIX dirname
 _dirname() {
-        dir="$1"
+    dir="$1"
 	dir=${dir%%"${dir##*[!/]}"}
 	if [ -n "${dir##*/*}" ]; then
 		dir=.
