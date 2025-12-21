@@ -18,10 +18,22 @@ _basename() {
 	echo "${dir:-/}"
 }
 
+# POSIX dirname
+_dirname() {
+        dir="$1"
+	dir=${dir%%"${dir##*[!/]}"}
+	if [ -n "${dir##*/*}" ]; then
+		dir=.
+	fi
+	dir=${dir%/*}
+	dir=${dir%%"${dir##*[!/]}"}
+	echo "${dir:-/}"
+}
+
 get_usb_storage_block() {
     idV="${1%:*}"
     idP="${1#*:}"
-    for path in $(find /sys/ -name idVendor | rev | cut -d/ -f 2- | rev); do
+    for path in $(find /sys/ -name idVendor | while read file; do _dirname "$file"; done); do
         if grep -q "$idV" "$path/idVendor"; then
             if grep -q "$idP" "$path/idProduct"; then
                 _basename "$(realpath --relative-base="$path" /sys/block/* | grep -vm 1 "^/")" 2>/dev/null
