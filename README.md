@@ -73,7 +73,6 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
 - `rev`
 - `cut`
 - `grep`
-- `basename`
 - `realpath`
 
 ## Credits
