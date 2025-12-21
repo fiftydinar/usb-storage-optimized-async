@@ -72,6 +72,10 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
 - `grep`
 - `realpath`
 
+## Known quirk
+- If 2 or more USB storage devices have the same USB vendor ID and USB model ID, then this fix won't apply for those USB storage devices.  
+`lsusb` output doesn't show the information about the USB storage block device, hence why we can't use anything else as an identifier.
+
 ## Credits
 To clarify, I am not the one who discovered this, I'm the one who just refined it to work reliably.
 
