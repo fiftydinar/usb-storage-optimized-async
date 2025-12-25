@@ -1,87 +1,93 @@
-#!/bin/bash
-
-set -x
+#!/bin/sh
 
 # Oneshot service script for usb-storage-optimized-async, as a fallback when udev triggers too early during the boot
-# for the script to apply (before login shell), so no USB replug to make the rule work is needed in that case
+# for the script to apply (before login shell), so no USB replug to make the rule work is needed
 
-# Limit the amount of disk cache for USB storage devices, to ensure that writing speed is correct, as opposed to async
-# sync is too slow & has a risk for deteorating USB storage data health, so that's why this balanced solution is being done
+# Limit the amount of writing cache in RAM for USB storage devices, to ensure that writing speed is correct, as opposed to async
+# sync is too slow & has a risk for deteorating USB storage health, so that's why this balanced solution is being done
 #
 # Credits:
 # - Megavolt (from Manjaro forums): for making it possible through his benchmarks, testings, findings & initial udev rule + script
 
-# POSIX basename
-_basename() {
+get_usb_storage_block() {
+    # POSIX basename
+    _basename() {
 	dir=${1%${1##*[!/]}}
 	dir=${dir##*/}
 	echo "${dir:-/}"
-}
+    }
 
-# POSIX dirname
-_dirname() {
-    dir="$1"
-	dir=${dir%%"${dir##*[!/]}"}
-	if [ -n "${dir##*/*}" ]; then
-		dir=.
-	fi
-	dir=${dir%/*}
-	dir=${dir%%"${dir##*[!/]}"}
-	echo "${dir:-/}"
-}
+    _contains_id() {
+        while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in
+                *"$1"*) return 0 ;;
+            esac
+        done < "$2"
+        return 1
+    }
 
-get_usb_storage_block() {
-    idV="${1%:*}"
-    idP="${1#*:}"
-    
-    shopt -s globstar    
-    for file in /sys/**/idVendor; do
-        dir="$(_dirname "$file")"
-        if [ ! -L "$dir" ]; then
-            usb_dirs+="$dir "
-        fi
+    usb_vendor_id="${1%:*}"
+    usb_product_id="${1#*:}"
+    usb_dirs=""
+    for dev in /sys/bus/usb/devices/*; do
+        [ -e "$dev/idVendor" ] || continue
+        real_path=$(cd -P "$dev" && echo "$PWD")
+        usb_dirs="$usb_dirs$real_path "
     done
-    shopt -u globstar
-
     for path in $usb_dirs; do
-        if grep -q "$idV" "$path/idVendor"; then
-            if grep -q "$idP" "$path/idProduct"; then
-                _basename "$(realpath --relative-base="$path" /sys/block/* | grep -vm 1 "^/")" 2>/dev/null
+        if _contains_id "$usb_vendor_id" "$path/idVendor" && \
+           _contains_id "$usb_product_id" "$path/idProduct"; then
+            block_dev=$(
+                for d in /sys/block/*; do
+                    [ -e "$d" ] || continue
+                    target=$(cd -P "$d" && echo "$PWD")
+                    case "$target" in
+                        "$path"*)
+                            suffix="${target#$path/}"
+                            case "$suffix" in
+                                /*) ;; 
+                                 *) echo "$suffix"; break ;;
+                            esac
+                            ;;
+                    esac
+                done
+            )
+            if [ -n "$block_dev" ]; then
+                _basename "$block_dev"
             fi
         fi
     done
 }
 
-readarray -t USB_VENDOR_MODEL < <(lsusb -v -t | awk '/Driver=usb-storage/{getline; gsub(/^[ \t]+|[ \t]+$/, "", $0); print $0}' | awk '/ID/{print $2}')
-if [ "${#USB_VENDOR_MODEL[@]}" -eq 0 ]; then
+USB_VENDOR_PRODUCT="$(lsusb -v -t | awk '/Driver=usb-storage/{getline; gsub(/^[ \t]+|[ \t]+$/, "", $0); print $0}' | awk '/ID/{print $2}')"
+if [ -z "$USB_VENDOR_PRODUCT" ]; then
+  echo "No USB vendor and product detected in lsusb output"
+  echo "Exiting"
   exit 0
 fi
-for usb_vendor_model in "${USB_VENDOR_MODEL[@]}"; do
-    usb_vendor="$(echo "$usb_vendor_model" | awk -F':' '{print $1}')"
-    usb_model="$(echo "$usb_vendor_model" | awk -F':' '{print $2}')"
-    block_device="$(get_usb_storage_block "$usb_vendor:$usb_model")"
+for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
+    if [ -z $(echo "$usb_vendor_product" | awk '$0 ~ /^[0-9]+:[0-9]+$/') ]; then
+      echo "USB vendor and product string doesn't match the integer:integer format"
+      continue
+    fi
+    usb_vendor="${usb_vendor_product%:*}"
+    usb_product="${usb_vendor_product#*:}"
+    block_device="$(get_usb_storage_block "$usb_vendor:$usb_product")"
     if [ -z "$block_device" ]; then
-      echo "Block device is empty"
+      echo "Block device string is empty, can't get the path of this USB storage device, skipping this USB storage device with ID '${usb_vendor}:${usb_product}'"
       continue
     fi
-    strict_limit=1
-    # apply strict limit to max_bytes of disk cache
-    if [ -e "/sys/block/${block_device}" ]; then
-      echo "${strict_limit}" > "/sys/block/${block_device}/bdi/strict_limit"
-    else
-      echo "This block device ${block_device} doesn't exist"
+    current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v product_id="${usb_product}" '$0 ~ vendor_id ":" product_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | awk '{gsub(/[a-zA-Z]/, ""); print}')
+    if [ -z "${current_usb_speed}" ]; then
+      echo "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
-    current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v model_id="${usb_model}" '$0 ~ vendor_id ":" model_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | grep -o '[0-9]*\.[0-9]*\|[0-9]*')
-    # Handle the case if float is with , as decimal separator
-    if [[ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]]; then
-      echo "Cannot determine current USB speed for this device to write custom max_bytes dirty value"
+    if [ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]; then
+      echo "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
-    # If current USB speed is somehow not determined or wrongly parsed, then stop the script
-    # if it's empty or if USB speed is not in integer or floats
-    if [[ -z "${current_usb_speed}" ]] || [[ ! "${current_usb_speed}" =~ ^-?[0-9]+(\.[0-9]+)?$ ]]; then
-      echo "Cannot determine current USB speed for the device to write custom max_bytes dirty value"
+    if ! echo "${current_usb_speed}" | awk '$0 ~ /^-?[0-9]+(\.[0-9]+)?$/ {found=1} END {exit !found}'; then
+      echo "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
     buffer_time="0.05"
@@ -95,9 +101,11 @@ for usb_vendor_model in "${USB_VENDOR_MODEL[@]}"; do
     # 1000MB/s: 8514437
     # 5000MB/s: 42593157
     # 10000MB/s: 85196800
-    # apply bandwidth defined value
+    # Apply bandwidth defined value
     if [ -e "/sys/block/${block_device}" ]; then
+      echo "1" > "/sys/block/${block_device}/bdi/strict_limit"
       echo "${max_bytes}" > "/sys/block/${block_device}/bdi/max_bytes"
+      echo "Applied the usb-storage-optimized-async fix for USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
     else
       echo "This block device ${block_device} doesn't exist"
       continue
