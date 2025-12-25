@@ -73,6 +73,7 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
 
 ## Known quirk
 - If 2 or more USB storage devices have the same USB vendor ID and USB model ID, then this fix won't apply for those USB storage devices.  
+This doesn't happen often, but it's worth to note.  
 `lsusb` output doesn't show the information about the USB storage block device, hence why we can't use anything else as an identifier.
 
 ## Credits
