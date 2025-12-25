@@ -60,6 +60,10 @@ for usb_vendor_model in "${USB_VENDOR_MODEL[@]}"; do
     usb_vendor="$(echo "$usb_vendor_model" | awk -F':' '{print $1}')"
     usb_model="$(echo "$usb_vendor_model" | awk -F':' '{print $2}')"
     block_device="$(get_usb_storage_block "$usb_vendor:$usb_model")"
+    if [ -z "$block_device" ]; then
+      echo "Block device is empty"
+      continue
+    fi
     strict_limit=1
     # apply strict limit to max_bytes of disk cache
     if [ -e "/sys/block/${block_device}" ]; then
