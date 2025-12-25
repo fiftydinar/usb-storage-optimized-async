@@ -38,8 +38,8 @@ fi
 
 buffer_time="0.05"
 safety_factor="1.3"
-max_bytes_calculation=$(echo "((${current_usb_speed} / 8) * ${buffer_time} * ${safety_factor}) * 1024 * 1024" | bc)
-max_bytes=$(echo "${max_bytes_calculation}" | awk '{print ($1 - int($1) > 0.5) ? int($1) + 1 : int($1)}')
+max_bytes_unrounded=$(echo "((${current_usb_speed} / 8) * ${buffer_time} * ${safety_factor}) * 1024 * 1024" | bc)
+max_bytes=$(echo "(${max_bytes_unrounded}+0.5)/1" | bc)
 # General max_bytes ideal value results (thanks to MegaVolt from Manjaro forums):
 # 12.5MB/s: 62915
 # 100MB/s: 817889
