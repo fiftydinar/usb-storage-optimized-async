@@ -64,10 +64,13 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
   - `max_bytes` BDI value is only available since then.
   - https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-bdi
 - `/bin/sh` POSIX shell
-- Systemd
+- `udev`
+  - only tested on SystemD's `udev`
 - `lsusb`
 - `gawk`
 - `bc`
+- Script autostarter on boot (`init` system like SystemD or something else)
+  - for applying the service script fix during later stage of boot, when USB storage device is already plugged in before and during the boot, where `udev` triggers too early to work
 
 ## Known quirk
 - If 2 or more USB storage devices have the same USB vendor ID and USB model ID, then this fix won't apply for those USB storage devices.  
