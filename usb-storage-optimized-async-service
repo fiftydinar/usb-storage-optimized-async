@@ -11,13 +11,19 @@
 
 log_location="/tmp/usb-storage-optimized-async-service.log"
 
-log() {
+_log() {
   if command -v date 1>/dev/null; then
     date="[$(date "+%a %b %e %H:%M:%S %Z %Y")]: "
   else
     date=""
   fi
   echo "${date}${1}" >> "${log_location}"
+}
+
+_cat() {
+  while IFS= read -r line; do
+      printf '%s\n' "$line"
+  done < "${1}"
 }
 
 get_usb_storage_block() {
@@ -72,33 +78,33 @@ get_usb_storage_block() {
 
 USB_VENDOR_PRODUCT="$(lsusb -v -t | awk '/Driver=usb-storage/{getline; gsub(/^[ \t]+|[ \t]+$/, "", $0); print $0}' | awk '/ID/{print $2}')"
 if [ -z "$USB_VENDOR_PRODUCT" ]; then
-  log "No USB vendor and product detected in lsusb output"
-  log "Exiting"
+  _log "No USB vendor and product detected in lsusb output"
+  _log "Exiting"
   exit 0
 fi
 for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
     if [ -z $(echo "$usb_vendor_product" | awk '$0 ~ /^[0-9]+:[0-9]+$/') ]; then
-      log "USB vendor and product string doesn't match the integer:integer format"
+      _log "USB vendor and product string doesn't match the integer:integer format"
       continue
     fi
     usb_vendor="${usb_vendor_product%:*}"
     usb_product="${usb_vendor_product#*:}"
     block_device="$(get_usb_storage_block "$usb_vendor:$usb_product")"
     if [ -z "$block_device" ]; then
-      log "Block device string is empty, can't get the path of this USB storage device, skipping this USB storage device with ID '${usb_vendor}:${usb_product}'"
+      _log "Block device string is empty, can't get the path of this USB storage device, skipping this USB storage device with ID '${usb_vendor}:${usb_product}'"
       continue
     fi
     current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v product_id="${usb_product}" '$0 ~ vendor_id ":" product_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | awk '{gsub(/[a-zA-Z]/, ""); print}')
     if [ -z "${current_usb_speed}" ]; then
-      log "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+      _log "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
     if [ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]; then
-      log "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+      _log "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
     if ! echo "${current_usb_speed}" | awk '$0 ~ /^-?[0-9]+(\.[0-9]+)?$/ {found=1} END {exit !found}'; then
-      log "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+      _log "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
     buffer_time="0.05"
@@ -116,11 +122,13 @@ for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
     if [ -e "/sys/block/${block_device}" ]; then
       echo "1" > "/sys/block/${block_device}/bdi/strict_limit"
       echo "${max_bytes}" > "/sys/block/${block_device}/bdi/max_bytes"
-      log "Applied the usb-storage-optimized-async fix for USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-      log "/sys/block/${block_device}/bdi/strict_limit = 1"
-      log "/sys/block/${block_device}/bdi/max_bytes = ${max_bytes}"
+      _log "Applied the usb-storage-optimized-async fix for USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+      _log "Calculated 'max_bytes' value: ${max_bytes}"
+      _log "Note that the applied 'max_bytes' value won't match exactly to the calculated value, but it will be rounded up to be close"
+      _log "/sys/block/${block_device}/bdi/strict_limit = $(_cat /sys/block/${block_device}/bdi/strict_limit)"
+      _log "/sys/block/${block_device}/bdi/max_bytes = $(_cat /sys/block/${block_device}/bdi/max_bytes)"
     else
-      log "This block device ${block_device} doesn't exist"
+      _log "This block device ${block_device} doesn't exist"
       continue
     fi
 done
