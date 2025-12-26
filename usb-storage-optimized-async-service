@@ -52,13 +52,12 @@ _cat() {
 }
 
 # Get kernel version of the running system
-    if [ -r "/proc/sys/kernel/osrelease" ]; then
-        read -r release < "/proc/sys/kernel/osrelease"
-        kernel_ver="$release"
-    else
-        return 1
-    fi
-}
+if [ -r "/proc/sys/kernel/osrelease" ]; then
+  read -r release < "/proc/sys/kernel/osrelease"
+  kernel_ver="$release"
+else
+  kernel_ver="undetected"
+fi
 
 get_usb_storage_block() {
     # POSIX basename
