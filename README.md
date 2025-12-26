@@ -42,16 +42,15 @@ As a comparison, Windows enables behavior similar to `sync` by default for USB s
 ### Udev rule
 
 1. Launch the `usb-storage-optimized-async-udev` script when USB storage device is detected and supply it with USB device block, USB vendor id and USB model id values
-2. `usb-storage-optimized-async-udev` script applies the strict BDI limit to the USB storage device that is supplied in bytes, which will be calculated later
-3. It determines the USB port speed of the USB storage device that is plugged into it using `lsusb -t -v` output  
+2. It determines the USB port speed of the USB storage device that is plugged into it using `lsusb -t -v` output  
    (systemd's udev has an option to supply `ATTRS{speed}` for this, but I found it to be inaccurate in my testing)
-4. Do the calculation of the ideal BDI `max_bytes` value for the USB writing cache on the USB storage device based on:  
+3. Do the calculation of the ideal BDI `max_bytes` value for the USB writing cache on the USB storage device based on:  
   - USB port speed (in MB)  
   - buffer time (0.05)  
   - safety factor (1.3)  
-5. Calculation looks like this:  
+4. Calculation looks like this:  
    ( `USB port speed` / 8 ) * `buffer time` * `safety factor` * 1024 * 1024
-6. Apply the calculated value to BDI `max_bytes` file
+5. Enable the data write limit (BDI `strict_limit`) and apply the calculated value to BDI `max_bytes` file
 
 By lowering and limiting the `max_bytes` BDI value, we assure that USB storage device won't overuse the USB writing cache.
 
