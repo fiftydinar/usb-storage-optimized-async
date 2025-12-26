@@ -58,6 +58,12 @@ By lowering and limiting the `max_bytes` BDI value, we assure that USB storage d
 It does the same as the `udev` rule, with the difference that it only applies once on boot,  
 as `udev` rule can trigger too early during the system boot when USB storage device is already plugged in for it to work.
 
+To find the USB storage block device, as the service script doesn't have that data available from `udev` as `udev` script does,  
+it uses the POSIX function `get_usb_storage_block`, which parses all USB bus symlinked directories in `/sys/bus/usb/devices/` and  
+checks which of those symlinked directories have matched USB vendor and product ID in `idVendor` and `idProduct` file;  
+when those symlinked directories are found, they are compared to physical `/sys/block/$block_device/` directories;  
+when the physical `/sys/block/$block_device/` directory matches to the symlinked directory, that's how the USB storage block device is found.
+
 ## Logging
 Logs for the `udev` rule and Systemd service for the current boot are stored in:
 - `/tmp/usb-storage-optimized-async-udev.log`
