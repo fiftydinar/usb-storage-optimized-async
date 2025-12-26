@@ -58,6 +58,11 @@ By lowering and limiting the `max_bytes` BDI value, we assure that USB storage d
 It does the same as the `udev` rule, with the difference that it only applies once on boot,  
 as `udev` rule can trigger too early during the system boot when USB storage device is already plugged in for it to work.
 
+## Logging
+Logs for the `udev` and Systemd service are stored in:
+- `/tmp/usb-storage-optimized-async-udev.log`
+- `/tmp/usb-storage-optimized-async-service.log`
+
 ## Requirements
 - Linux 6.1+ kernel  
   - `max_bytes` BDI value is only available since then.
@@ -70,6 +75,10 @@ as `udev` rule can trigger too early during the system boot when USB storage dev
 - `bc`
 - Script autostarter on boot (`init` system like SystemD or something else)
   - for applying the service script fix during later stage of boot, when USB storage device is already plugged in before and during the boot, where `udev` triggers too early to work
+
+**Optional dependency:**  
+- `date`
+  - for adding the time and date info to the log
 
 ## Known quirk
 - If 2 or more USB storage devices have the same USB vendor ID and USB model ID, then this fix won't apply for those USB storage devices.  
