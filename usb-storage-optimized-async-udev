@@ -54,13 +54,12 @@ _cat() {
 }
 
 # Get kernel version of the running system
-    if [ -r "/proc/sys/kernel/osrelease" ]; then
-        read -r release < "/proc/sys/kernel/osrelease"
-        kernel_ver="$release"
-    else
-        return 1
-    fi
-}
+if [ -r "/proc/sys/kernel/osrelease" ]; then
+  read -r release < "/proc/sys/kernel/osrelease"
+  kernel_ver="$release"
+else
+  return 1
+fi
 
 if [ ! -e "/sys/block/${block_device}/bdi/max_bytes" ]; then
   _log "Your kernel version '${kernel_ver}' doesn't support the 'max_bytes' BDI value. At least Linux 6.1 kernel is required."
