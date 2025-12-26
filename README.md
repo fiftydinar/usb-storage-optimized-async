@@ -59,7 +59,7 @@ It does the same as the `udev` rule, with the difference that it only applies on
 as `udev` rule can trigger too early during the system boot when USB storage device is already plugged in for it to work.
 
 ## Logging
-Logs for the `udev` and Systemd service for the current boot are stored in:
+Logs for the `udev` rule and Systemd service for the current boot are stored in:
 - `/tmp/usb-storage-optimized-async-udev.log`
 - `/tmp/usb-storage-optimized-async-service.log`
 
