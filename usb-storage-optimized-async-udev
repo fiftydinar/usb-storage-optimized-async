@@ -19,6 +19,7 @@ _log() {
   else
     date=""
   fi
+  echo "${date}${1}"
   echo "${date}${1}" >> "${log_location}"
 }
 
