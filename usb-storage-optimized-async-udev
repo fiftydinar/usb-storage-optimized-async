@@ -58,7 +58,7 @@ if [ -r "/proc/sys/kernel/osrelease" ]; then
   read -r release < "/proc/sys/kernel/osrelease"
   kernel_ver="$release"
 else
-  return 1
+  kernel_ver="undetected"
 fi
 
 if [ ! -e "/sys/block/${block_device}/bdi/max_bytes" ]; then
