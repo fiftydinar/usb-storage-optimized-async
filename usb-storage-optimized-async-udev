@@ -8,28 +8,38 @@
 # Credits:
 # - Megavolt (from Manjaro forums): for making it possible through his benchmarks, testings, findings & initial udev rule + script
 
+log_location="/tmp/usb-storage-optimized-async-udev.log"
 block_device="${1}"
 usb_vendor="${2}"
 usb_product="${3}"
+
+log() {
+  if command -v date 1>/dev/null; then
+    date="[$(date "+%a %b %e %H:%M:%S %Z %Y")]: "
+  else
+    date=""
+  fi
+  echo "${date}${1}" >> "${log_location}"
+}
 
 # Determine current USB device speed, as ATTRS{speed} is unreliable - it detects xHCI USB speed instead of proper USB speed
 current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v product_id="${usb_product}" '$0 ~ vendor_id ":" product_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | awk '{gsub(/[a-zA-Z]/, ""); print}')
 
 if [ -z "${current_usb_speed}" ]; then
-  echo "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  echo "Exiting"
+  log "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+  log "Exiting"
   exit 1
 fi
 
 if [ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]; then
-  echo "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  echo "Exiting"
+  log "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+  log "Exiting"
   exit 1
 fi
 
 if ! echo "${current_usb_speed}" | awk '$0 ~ /^-?[0-9]+(\.[0-9]+)?$/ {found=1} END {exit !found}'; then
-  echo "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  echo "Exiting"
+  log "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+  log "Exiting"
   exit 1
 fi
 
@@ -48,4 +58,6 @@ max_bytes=$(echo "(${max_bytes_unrounded}+0.5)/1" | bc)
 # apply bandwidth defined value
 echo "1" > "/sys/block/${block_device}/bdi/strict_limit"
 echo "${max_bytes}" > "/sys/block/${block_device}/bdi/max_bytes"
-echo "Applied the usb-storage-optimized-async fix for USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+log "Applied the usb-storage-optimized-async fix for USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+log "/sys/block/${block_device}/bdi/strict_limit = 1"
+log "/sys/block/${block_device}/bdi/max_bytes = ${max_bytes}"
