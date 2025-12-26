@@ -26,6 +26,15 @@ _cat() {
   done < "${1}"
 }
 
+# Get kernel version of the running system
+    if [ -r "/proc/sys/kernel/osrelease" ]; then
+        read -r release < "/proc/sys/kernel/osrelease"
+        kernel_ver="$release"
+    else
+        return 1
+    fi
+}
+
 get_usb_storage_block() {
     # POSIX basename
     _basename() {
@@ -79,7 +88,7 @@ get_usb_storage_block() {
 USB_VENDOR_PRODUCT="$(lsusb -v -t | awk '/Driver=usb-storage/{getline; gsub(/^[ \t]+|[ \t]+$/, "", $0); print $0}' | awk '/ID/{print $2}')"
 if [ -z "$USB_VENDOR_PRODUCT" ]; then
   _log "No USB vendor and product detected in lsusb output"
-  _log "Exiting"
+  _log "Exiting..."
   exit 0
 fi
 for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
@@ -93,6 +102,11 @@ for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
     if [ -z "$block_device" ]; then
       _log "Block device string is empty, can't get the path of this USB storage device, skipping this USB storage device with ID '${usb_vendor}:${usb_product}'"
       continue
+    fi
+    if [ ! -e "/sys/block/${block_device}/bdi/max_bytes" ]; then
+      _log "Your kernel version '${kernel_ver}' doesn't support the 'max_bytes' BDI value. At least Linux 6.1 kernel is required."
+      _log "Exiting..."
+      exit 1
     fi
     current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v product_id="${usb_product}" '$0 ~ vendor_id ":" product_id {split(prev, a, " "); print a[length(a)]} {prev=$0}' | awk '{gsub(/[a-zA-Z]/, ""); print}')
     if [ -z "${current_usb_speed}" ]; then
@@ -128,7 +142,7 @@ for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
       _log "/sys/block/${block_device}/bdi/strict_limit = $(_cat /sys/block/${block_device}/bdi/strict_limit)"
       _log "/sys/block/${block_device}/bdi/max_bytes = $(_cat /sys/block/${block_device}/bdi/max_bytes)"
     else
-      _log "This block device ${block_device} doesn't exist, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
+      _log "This block device '${block_device}' doesn't exist, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', non-existent path '/sys/block/${block_device}'"
       continue
     fi
 done
