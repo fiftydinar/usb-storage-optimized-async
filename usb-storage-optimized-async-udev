@@ -48,19 +48,19 @@ current_usb_speed=$(lsusb -t -v | awk -v vendor_id="${usb_vendor}" -v product_id
 
 if [ -z "${current_usb_speed}" ]; then
   _log "Current USB speed for this USB storage device is empty, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  _log "Exiting"
+  _log "Exiting..."
   exit 1
 fi
 
 if [ $(echo "${current_usb_speed}" | awk 'END {print NR}') -gt 1 ]; then
   _log "There are multiple strings of current USB speed for this USB storage device, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  _log "Exiting"
+  _log "Exiting..."
   exit 1
 fi
 
 if ! echo "${current_usb_speed}" | awk '$0 ~ /^-?[0-9]+(\.[0-9]+)?$/ {found=1} END {exit !found}'; then
   _log "Current USB speed for this USB storage device is not in integer or float values, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
-  _log "Exiting"
+  _log "Exiting..."
   exit 1
 fi
 
