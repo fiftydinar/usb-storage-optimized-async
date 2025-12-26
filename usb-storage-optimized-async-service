@@ -128,7 +128,7 @@ for usb_vendor_product in ${USB_VENDOR_PRODUCT}; do
       _log "/sys/block/${block_device}/bdi/strict_limit = $(_cat /sys/block/${block_device}/bdi/strict_limit)"
       _log "/sys/block/${block_device}/bdi/max_bytes = $(_cat /sys/block/${block_device}/bdi/max_bytes)"
     else
-      _log "This block device ${block_device} doesn't exist"
+      _log "This block device ${block_device} doesn't exist, skiping this USB storage device with ID '${usb_vendor}:${usb_product}', path '/sys/block/${block_device}'"
       continue
     fi
 done
