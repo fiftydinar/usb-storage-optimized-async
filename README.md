@@ -50,7 +50,7 @@ As a comparison, Windows enables behavior similar to `sync` by default for USB s
   - safety factor (1.3)  
 4. Calculation looks like this:  
    ( `USB port speed` / 8 ) * `buffer time` * `safety factor` * 1024 * 1024
-5. Enable the data write limit (BDI `strict_limit`) and apply the calculated value to BDI `max_bytes` file
+5. Enable the data write RAM cache limit (BDI `strict_limit`) and apply the calculated value to BDI `max_bytes` file
 
 By lowering and limiting the `max_bytes` BDI value, we assure that USB storage device won't overuse the USB writing cache.
 
