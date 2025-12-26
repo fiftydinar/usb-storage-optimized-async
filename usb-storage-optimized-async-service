@@ -20,6 +20,30 @@ _log() {
   echo "${date}${1}" >> "${log_location}"
 }
 
+dependencies="
+  lsusb
+  awk
+  bc
+"
+missing_dependencies=""
+missing_dep_check=0
+for dep in ${dependencies}; do
+  if ! command -v "${dep}" 1>/dev/null; then
+    missing_dep_check=1
+    if [ -z "${missing_dependencies}" ]; then
+      missing_dependencies="$dep"
+    else
+      missing_dependencies="${missing_dependencies} ${dep}"
+    fi
+  fi
+done
+if [ "$missing_dep_check" = 1 ]; then
+  _log "Missing dependency/ies '${missing_dependencies}'. Cannot continue running the program."
+  _log "Please install '${missing_dependencies}' dependency/ies and try again."
+  _log "Exiting..."
+  exit 1
+fi
+
 _cat() {
   while IFS= read -r line; do
       printf '%s\n' "$line"
