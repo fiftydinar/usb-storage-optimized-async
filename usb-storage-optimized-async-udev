@@ -40,6 +40,7 @@ _cat() {
 if [ ! -e "/sys/block/${block_device}/bdi/max_bytes" ]; then
   _log "Your kernel version '${kernel_ver}' doesn't support the 'max_bytes' BDI value. At least Linux 6.1 kernel is required."
   _log "Exiting..."
+  exit 1
 fi
 
 # Determine current USB device speed, as ATTRS{speed} is unreliable - it detects xHCI USB speed instead of proper USB speed
