@@ -9,9 +9,24 @@
 # - Megavolt (from Manjaro forums): for making it possible through his benchmarks, testings, findings & initial udev rule + script
 
 log_location="/tmp/usb-storage-optimized-async-udev.log"
+MAX_LOG_LINES="${MAX_LOG_LINES:-1000}"
+
 block_device="${1}"
 usb_vendor="${2}"
 usb_product="${3}"
+
+_truncate_log() {
+  [ ! -f "${log_location}" ] && return
+  if [ "${MAX_LOG_LINES}" -le 0 ]; then return; fi
+  awk --inplace -v keep="${MAX_LOG_LINES}" '
+  {
+    buf[NR%keep] = $0
+  }
+  END {
+    start = (NR>keep ? NR-keep+1 : 1)
+    for(i=start;i<=NR;i++) print buf[i%keep]
+  }' "${log_location}" 2>/dev/null || return
+}
 
 _log() {
   if command -v date 1>/dev/null; then
@@ -21,6 +36,7 @@ _log() {
   fi
   echo "${date}${1}"
   echo "${date}${1}" >> "${log_location}"
+  _truncate_log
 }
 
 dependencies="
